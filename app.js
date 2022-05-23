@@ -1,5 +1,6 @@
 import express from "express";
 import mysql from "mysql2/promise";
+import cors from "cors";
 
 const pool = mysql.createPool({
   host: "localhost",
@@ -12,7 +13,68 @@ const pool = mysql.createPool({
 });
 
 const app = express();
+
+app.use(express.json());
+
+const corsOptions = {
+  origin: "https://cdpn.io",
+  optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
+};
+
+app.use(cors(corsOptions));
+
 const port = 3000;
+
+app.patch("/todos/:id", async (req, res) => {
+  //const id = req.params.id;
+  const { id } = req.params;
+
+  const [rows] = await pool.query(
+    `
+    SELECT *
+    FROM todo
+    WHERE id = ?
+    `,
+    [id]
+  );
+
+  if (rows.length == 0) {
+    res.status(404).json({
+      msg: "not found",
+    });
+    return;
+  }
+
+  const { perform_date, content } = req.body;
+
+  if (!perform_date) {
+    res.status(400).json({
+      msg: "perform_date required",
+    });
+    return;
+  }
+
+  if (!content) {
+    res.status(400).json({
+      msg: "content required",
+    });
+    return;
+  }
+
+  const [rs] = await pool.query(
+    `
+    UPDATE todo
+    SET perform_date = ?,
+    content = ?
+    WHERE id = ?
+    `,
+    [perform_date, content, id]
+  );
+
+  res.json({
+    msg: `${id}번 할일이 수정되었습니다.`,
+  });
+});
 
 app.get("/todos/:id", async (req, res) => {
   //const id = req.params.id;
